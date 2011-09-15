@@ -107,7 +107,7 @@ var ApiInterface;
               that.request.responseObject = JSON.parse(that.request.responseText);
             }
             that.success.call(that);
-          } else if (isFunction(that.error)) {
+          } else if (that.request.status !== 200 && isFunction(that.error)) {
             that.error.call(that);
           }
           if (isFunction(that.complete)) {
@@ -235,33 +235,53 @@ var ApiInterface;
         method: 'POST',
         data: {requests: requests},
         success: function () {
-          var response, callback, i, l;
+          var response, callback, i, l, data, status, message, context;
 
           response = this.request.responseObject;
 
-          // TODO process errors returned from server side
-
-          if (!response || !response.data) {
+          if (!response || !response.status || response.status !== 200) {
             if (isFunction(this.error)) {
               this.error.call(this);
             }
             return;
           }
 
-          for (i = 0, l = response.data.length; i < l; i += 1) {
-            callback = labels[response.data[i].label];
-            if (isFunction(callback.success)) {
-              callback.success(response.data[i].result);
+          for (i = 0, l = response.results.length; i < l; i += 1) {
+            data = response.results[i];
+            if (!data) {
+              continue;
             }
+
+            callback = labels[data.label];
+            status = data.status || 500;
+            message = data.error || '';
+            context = callback.context || this;
+
+            if (status === 200 && isFunction(callback.success)) {
+              callback.success.call(callback.context, data.result, this.request);
+            } else if (status !== 200 && isFunction(callback.error)) {
+              callback.error.call(callback.context, status, message, this.request);
+            }
+
+            callback = data = status = message = null;
           }
         },
         error: function () {
-          var i, l, callback;
+          var i, l, callback, status = this.request.status, message = '';
+
+          if (status === 200) {
+            if (!response || !response.status) {
+              status = 500;
+            } else {
+              status = response.status;
+              message = response.error || '';
+            }
+          }
 
           for (i = 0, l = callbacks.length; i < l; i += 1) {
             callback = callbacks[i];
             if (isFunction(callback.error)) {
-              callback.error(); // TODO error params
+              callback.error.call(callback.context, status, message, this.request);
             }
           }
         },
@@ -275,6 +295,7 @@ var ApiInterface;
 
     // TODO - ability to override previous call thats still in queue
     call: function (options) {
+      options.context = options.context || this;
       this.callbacks.ajax_queue.push(options);
       this.processQueue();
       return this;

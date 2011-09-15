@@ -13,15 +13,15 @@ class ApiInterfaceDispatcher {
   public function dispatch () {
 
     if (empty(self::$directory) || !is_dir(self::$directory)) {
-      return $this->error();
+      return $this->error(500, 'Internal Server Error');
     }
 
     if (strtolower($_SERVER['REQUEST_METHOD']) !== 'post') {
-      return $this->error();
+      return $this->error(405, 'Method Not Allowed');
     }
 
     if (empty($_POST['requests'])) {
-      return $this->error();
+      return $this->error(400, 'Bad Request');
     }
 
     if (!self::load('app')) {
@@ -34,16 +34,22 @@ class ApiInterfaceDispatcher {
 
     $requests = json_decode($_POST['requests'], true);
 
+    if (!is_array($requests)) {
+      return $this->error(400, 'Bad Request');
+    }
+
     $responses = array();
 
     foreach ($requests as $request) {
 
-      $result;
+      if (!is_array($request)) {
+        continue;
+      }
 
       try {
 
         if (!self::load($request['controller'])) {
-          throw new Exception('invalid controller'); // TODO
+          throw new Exception('Invalid controller', 404);
         }
 
         $class = $this->getClass($request['controller']);
@@ -51,42 +57,47 @@ class ApiInterfaceDispatcher {
         $action = $request['action'];
 
         if (!in_array($action, get_class_methods($class))) {
-          throw new Exception('invalid action'); // TODO
+          throw new Exception('Invalid action', 404);
         }
 
         $obj = new $class();
 
-        $result = $obj->$action(isset($request['args']) ? $request['args'] : array());
+        $result = $obj->$action(isset($request['args']) && is_array($request['args']) ? $request['args'] : array());
+
+        array_push($responses, array(
+          'status' =>  200,
+          'label' =>  $request['label'],
+          'result' => $result
+        ));
 
       } catch (Exception $e) {
-        $result = $e->getMessage(); // TODO
+        array_push($responses, array(
+          'status' =>  $e->Code(),
+          'label' =>  $request['label'],
+          'error' => $e->getMessage()
+        ));
       }
-
-      array_push($responses, array(
-        'label' =>  $request['label'],
-        'result' => $result
-      ));
 
     }
 
-    $this->respond('OK', $responses); // TODO - Fix that status
+    $this->respond(200, array('status' => 200, 'results' => $responses));
 
   }
 
-  protected function error () {
-    $this->respond('error', 'wrong');
+  protected function error ($status, $message) {
+    $this->respond($status, array('status' => $status, 'error' => $message));
   }
 
   public static function toCamelCase ($input) {
-    return str_replace(' ', '', ucwords(str_replace('_', ' ', strtolower($input)))); // FIXME - mb_strtolower
+    return str_replace(' ', '', ucwords(str_replace('_', ' ', strtolower($input))));
   }
 
   protected function getClass ($controller) {
-    return self::toCamelCase(strtolower($controller) . '_controller'); // FIXME - mb_strtolower
+    return self::toCamelCase(strtolower($controller) . '_controller');
   }
 
   public static function load ($controller) {
-    $controller = strtolower($controller) . '_controller'; // FIXME - mb_strtolower
+    $controller = strtolower($controller) . '_controller';
 
     $class = self::toCamelCase($controller);
     if (class_exists($class)) {
@@ -105,16 +116,10 @@ class ApiInterfaceDispatcher {
   }
 
   protected function respond ($status, $data) {
+    header('Content-Type: application/json', true, (int) $status);
 
-    header('Content-Type: application/json');
-
-    echo json_encode(array(
-      'status' => $status,
-      'data' => $data
-    ));
-
+    echo json_encode($data);
     exit;
-
   }
 
 }
