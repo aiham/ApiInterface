@@ -26,6 +26,9 @@
             function (result) {
               list.push(name);
               updateUsers(list);
+            },
+            function (status, message) {
+              alert('Could not add user (' + status + '): ' + message);
             }
           );
         };
