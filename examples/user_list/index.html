@@ -21,6 +21,9 @@
   
         addUser = function () {
           var name = prompt('User name?', '');
+          if (!name) {
+            return;
+          }
           users.addNewUser(
             {name: name},
             function (result) {
