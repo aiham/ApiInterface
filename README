@@ -1,1 +1,11 @@
 ApiInterface
+
+Easily access PHP actions using Javascript through automated Ajax. A bridge between Javascript and PHP.
+
+To do
+- Use Reflection class to determine method parameters and assign them accordingly
+- Make sure controller constructor and destructor is only called once per batch request
+- Implement polling/server side event binding
+- Prevent CSRF with the use of tokens
+- Implement methods that require authorisation
+- Add documentation and tests
