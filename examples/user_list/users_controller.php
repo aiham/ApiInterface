@@ -6,11 +6,12 @@ class UsersController extends AppController {
     return $this->db['users'];
   }
 
-  public function addNewUser ($args) {
-    if (empty($args) || empty($args['name'])) {
-      throw new Exception('Invalid arguments', 400);
+  public function addNewUser ($name) {
+    $name = trim($name);
+    if (empty($name)) {
+      throw new Exception('Empty name argument', 400);
     }
-    array_push($this->db['users'], $args['name']);
+    array_push($this->db['users'], $name);
     return array('id' => count($this->db['users']) - 1);
   }
 
