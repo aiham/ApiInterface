@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+  	<meta charset="utf-8">
+  	<title>ApiInterface Example - User List</title>
+    <script src="../../src/api_interface.js"></script>
+    <script>
+      var addUser;
+  
+      (function () {
+  
+        var users, list, api, updateUsers;
+
+        list = [];
+
+        api = new ApiInterface('api.php');
+
+        updateUsers = function () {
+          document.getElementById('users').innerHTML = 'Users: ' + (list.length < 1 ? 'none' : list.join(', '));
+        };
+  
+        addUser = function () {
+          var name = prompt('User name?', '');
+          users.addNewUser(
+            {name: name},
+            function (result) {
+              list.push(name);
+              updateUsers(list);
+            }
+          );
+        };
+  
+        api.ready(function () {
+          users = new api.controllers.users();
+  
+          users.getAllUsers({}, function (results) {
+            list = results;
+            updateUsers(list);
+          });
+        });
+  
+      }());
+    </script>
+  </head>
+  <body>
+    <input type="submit" value="Add" onclick="addUser();">
+  	<div id="users">Loading...</div>
+  </body>
+</html>
