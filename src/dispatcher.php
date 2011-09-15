@@ -72,7 +72,7 @@ class ApiInterfaceDispatcher {
 
       } catch (Exception $e) {
         array_push($responses, array(
-          'status' =>  $e->Code(),
+          'status' =>  $e->getCode(),
           'label' =>  $request['label'],
           'error' => $e->getMessage()
         ));
