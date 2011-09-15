@@ -57,6 +57,8 @@ var ApiInterface;
 
     this.data = toQueryString(options.data);
 
+    this.timeout = options.timeout || 7000;
+
     this.parse_json = typeof options.parse_json !== 'undefined' ? !!options.parse_json : true;
 
   };
@@ -123,15 +125,29 @@ var ApiInterface;
 
       this.request.send(this.data);
 
+      this.timer = setTimeout(function () {
+        delete that.timer;
+        if (that.request) {
+          that.request.abort();
+          that.request.status = 503;
+          if (isFunction(that.error)) {
+            that.error.call(that);
+          }
+          if (isFunction(that.complete)) {
+            that.complete.call(that);
+          }
+        }
+      }, this.timeout);
+
     }
 
   };
 
-  ApiInterface = function (path, interval) {
+  ApiInterface = function (path) {
 
     this.path = path;
 
-    this.timer_interval = interval || 10000; // 10 seconds by default
+    this.timer_interval = 1000; // 1 second
 
     this.controllers = {};
 
@@ -294,9 +310,15 @@ var ApiInterface;
 
     // TODO - ability to override previous call thats still in queue
     call: function (options) {
+      var that = this;
       options.context = options.context || this;
       this.callbacks.ajax_queue.push(options);
-      this.processQueue();
+      if (this.timer) {
+        clearTimeout(this.timer);
+      }
+      this.timer = setTimeout(function () {
+        that.processQueue();
+      }, this.timer_interval);
       return this;
     },
 
