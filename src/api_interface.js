@@ -153,7 +153,6 @@ var ApiInterface;
 
         for (i = 0, l = controllers.length; i < l; i += 1) {
           controller_details = controllers[i];
-          name = controller_details.name;
           controller = function () {
             // TODO
           };
@@ -177,7 +176,7 @@ var ApiInterface;
               };
             }(action);
           }
-          that.controllers[controller_details.name] = controller;
+          that.controllers[controller_details.class] = controller;
         }
         controller = controller_details = action = null;
 

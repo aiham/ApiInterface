@@ -11,10 +11,11 @@ class MainController extends AppController {
         continue;
       }
       ApiInterfaceDispatcher::load($name);
-      $class = ApiInterfaceDispatcher::toCamelCase($name . '_controller');
+      $class = ApiInterfaceDispatcher::toCamelCase($name);
       array_push($controllers, array(
         'name' => $name,
-        'actions' => array_filter(get_class_methods($class), array($this, 'filterAction'))
+        'class' => $class,
+        'actions' => array_filter(get_class_methods($class . 'Controller'), array($this, 'filterAction'))
       ));
     }
     return $controllers;

@@ -34,7 +34,7 @@
         };
   
         api.ready(function () {
-          users = new api.controllers.users();
+          users = new api.controllers.Users();
   
           users.getAllUsers({}, function (results) {
             list = results;
