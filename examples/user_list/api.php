@@ -1,6 +1,6 @@
 <?php
 
-include '../../src/dispatcher.php';
+include 'custom_dispatcher.php';
 
-$dispatcher = new ApiInterfaceDispatcher(dirname(__FILE__));
+$dispatcher = new CustomDispatcher(dirname(__FILE__));
 $dispatcher->dispatch();
