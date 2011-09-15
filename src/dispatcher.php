@@ -48,6 +48,10 @@ class ApiInterfaceDispatcher {
 
       try {
 
+        if (empty($request['controller']) || empty($request['action']) || empty($request['label'])) {
+          throw new Exception('Bad Request', 400);
+        }
+
         if (!self::load($request['controller'])) {
           throw new Exception('Invalid controller', 404);
         }
