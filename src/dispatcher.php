@@ -72,13 +72,31 @@ class ApiInterfaceDispatcher {
           throw new Exception('Invalid action', 404);
         }
 
+        $args = isset($request['args']) ? $request['args'] : array();
+
+        $method = new ReflectionMethod($class, $action);
+        $parameters = $method->getParameters();
+        $ordered_args = array();
+        foreach ($parameters as $parameter) {
+          $name = $parameter->getName();
+          if (isset($args[$name])) {
+            $value = $args[$name];
+          } else {
+            if (!$parameter->isOptional()) {
+              throw new Exception('Missing required argument ' . $name, 400);
+            }
+            $value = $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null;
+          }
+          $ordered_args[$parameter->getPosition()] = $value;
+        }
+
         $obj = new $class();
 
         if (method_exists($this, 'beforeRequest')) {
           $obj = $this->beforeRequest($obj);
         }
 
-        $result = $obj->$action(isset($request['args']) && is_array($request['args']) ? $request['args'] : array());
+        $result = call_user_func_array(array($obj, $action), $ordered_args);
 
         if (method_exists($this, 'beforeResponse')) {
           $result = $this->beforeResponse($result);
