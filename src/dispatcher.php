@@ -12,6 +12,14 @@ class ApiInterfaceDispatcher {
 
   public function dispatch () {
 
+    if (method_exists($this, 'init')) {
+      try {
+        $this->init();
+      } catch (Exception $e) {
+        return $this->error($e->getCode(), $e->getMessage());
+      }
+    }
+
     if (empty(self::$directory) || !is_dir(self::$directory)) {
       return $this->error(500, 'Internal Server Error');
     }
@@ -66,7 +74,15 @@ class ApiInterfaceDispatcher {
 
         $obj = new $class();
 
+        if (method_exists($this, 'beforeRequest')) {
+          $obj = $this->beforeRequest($obj);
+        }
+
         $result = $obj->$action(isset($request['args']) && is_array($request['args']) ? $request['args'] : array());
+
+        if (method_exists($this, 'beforeResponse')) {
+          $result = $this->beforeResponse($result);
+        }
 
         array_push($responses, array(
           'status' =>  200,
@@ -84,12 +100,25 @@ class ApiInterfaceDispatcher {
 
     }
 
+    if (method_exists($this, 'clean')) {
+      try {
+        $this->clean();
+      } catch (Exception $e) {
+        $this->error($e->getCode(), $e->getMessage(), false);
+      }
+    }
+
     $this->respond(200, array('status' => 200, 'results' => $responses));
 
   }
 
-  protected function error ($status, $message) {
-    $this->respond($status, array('status' => $status, 'error' => $message));
+  protected function error ($status, $message, $respond = true) {
+    if (method_exists($this, 'onError')) {
+      $this->onError($status, $message);
+    }
+    if ($response) {
+      $this->respond($status, array('status' => $status, 'error' => $message));
+    }
   }
 
   public static function toCamelCase ($input) {
