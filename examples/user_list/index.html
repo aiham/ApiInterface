@@ -16,7 +16,13 @@
         api = new ApiInterface('api.php');
 
         updateUsers = function () {
-          document.getElementById('users').innerHTML = 'Users: ' + (list.length < 1 ? 'none' : list.join(', '));
+          var e = document.getElementById('users');
+          e.innerHTML = '';
+          e.appendChild(
+            document.createTextNode(
+              'Users: ' + (list.length < 1 ? 'none' : list.join(', '))
+            )
+          );
         };
   
         addUser = function () {
@@ -28,7 +34,7 @@
             {name: name},
             function (result) {
               list.push(name);
-              updateUsers(list);
+              updateUsers();
             },
             function (status, message) {
               alert('Could not add user (' + status + '): ' + message);
@@ -41,7 +47,7 @@
   
           users.getAllUsers({}, function (results) {
             list = results;
-            updateUsers(list);
+            updateUsers();
           });
         });
   
