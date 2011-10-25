@@ -1,4 +1,7 @@
-<!doctype html>
+<?php
+  include 'custom_dispatcher.php';
+  $sess = CustomDispatcher::requestKeyAndToken();
+?><!doctype html>
 <html lang="en">
   <head>
   	<meta charset="utf-8">
@@ -13,7 +16,7 @@
 
         list = [];
 
-        api = new ApiInterface('api.php');
+        api = new ApiInterface('api.php', <?php echo json_encode($sess['key']) . ', ' . json_encode($sess['token']); ?>);
 
         updateUsers = function () {
           var e = document.getElementById('users');

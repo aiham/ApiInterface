@@ -5,7 +5,7 @@ var ApiInterface;
 
   'use strict';
 
-  var Ajax, toQueryString, populateControllers, isFunction, isString, indexOf, randomInteger;
+  var Ajax, toQueryString, populateControllers, isFunction, isString, isArray, indexOf, randomInteger;
 
   indexOf = Array.prototype.indexOf; // TODO - old browsers fallback
 
@@ -15,6 +15,10 @@ var ApiInterface;
 
   isString = function (o) {
     return typeof o === 'string';
+  };
+
+  isArray = function (o) {
+    return Object.prototype.toString.call(o) === '[object Array]';
   };
 
   // Changes the object into query string
@@ -129,7 +133,7 @@ var ApiInterface;
         delete that.timer;
         if (that.request) {
           that.request.abort();
-          that.request.status = 503;
+          that.request.status = 503; // FIXME - status is read only
           if (isFunction(that.error)) {
             that.error.call(that);
           }
@@ -143,9 +147,11 @@ var ApiInterface;
 
   };
 
-  ApiInterface = function (path) {
+  ApiInterface = function (path, key, token) {
 
     this.path = path;
+    this.key = key;
+    this.token = token;
 
     this.timer_interval = 1000; // 1 second
 
@@ -167,34 +173,43 @@ var ApiInterface;
       success: function (controllers) {
         var controller_details, controller, i, l, j, k, action;
 
-        for (i = 0, l = controllers.length; i < l; i += 1) {
-          controller_details = controllers[i];
-          controller = function () {
-            // TODO
-          };
-          controller.prototype = {
-            constructor: controller,
-            _delegate: that,
-            _name: controller_details.name
-          };
-          for (j = 0, k = controller_details.actions.length; j < k; j += 1) {
-            action = controller_details.actions[j];
-            controller.prototype[action] = function (name) {
-              return function (args, success, error, complete) {
-                this._delegate.call({
-                  controller: this._name,
-                  action: name,
-                  args: args,
-                  success: success,
-                  error: error,
-                  complete: complete
-                });
-              };
-            }(action);
+        if (isArray(controllers)) {
+          for (i = 0, l = controllers.length; i < l; i += 1) {
+            controller_details = controllers[i];
+            if (!controller_details) {
+              continue;
+            }
+            controller = function () {
+              // TODO
+            };
+            controller.prototype = {
+              constructor: controller,
+              _delegate: that,
+              _name: controller_details.name
+            };
+            for (j = 0, k = controller_details.actions.length; j < k; j += 1) {
+              action = controller_details.actions[j];
+              controller.prototype[action] = function (name) {
+                return function (args, success, error, complete) {
+                  this._delegate.call({
+                    controller: this._name,
+                    action: name,
+                    args: args,
+                    success: success,
+                    error: error,
+                    complete: complete
+                  });
+                };
+              }(action);
+            }
+            that.controllers[controller_details.class] = controller;
           }
-          that.controllers[controller_details.class] = controller;
         }
-        controller = controller_details = action = null;
+
+        controllers =
+          controller =
+          controller_details =
+          action = null;
 
         that.isReady = true;
 
@@ -248,18 +263,20 @@ var ApiInterface;
       this.ajax = new Ajax({
         path: this.path,
         method: 'POST',
-        data: {requests: requests},
+        data: {key: this.key, token: this.token, requests: requests},
         success: function () {
           var response, callback, i, l, data, status, message, context;
 
           response = this.request.responseObject;
 
-          if (!response || !response.status || response.status !== 200) {
+          if (!response || !response.status || response.status !== 200 || !isString(response.token)) {
             if (isFunction(this.error)) {
               this.error.call(this);
             }
             return;
           }
+
+          that.token = response.token;
 
           for (i = 0, l = response.results.length; i < l; i += 1) {
             data = response.results[i];

@@ -1,4 +1,7 @@
-<!doctype html>
+<?php
+  include '../../src/dispatcher.php';
+  $sess = ApiInterfaceDispatcher::requestKeyAndToken();
+?><!doctype html>
 <html lang="en">
   <head>
   	<meta charset="utf-8">
@@ -152,7 +155,7 @@
             });
           };
 
-        var api = new ApiInterface('api.php');
+        var api = new ApiInterface('api.php', <?php echo json_encode($sess['key']) . ', ' . json_encode($sess['token']); ?>);
   
         api.ready(ready);
 

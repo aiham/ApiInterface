@@ -10,7 +10,7 @@ class MainController extends AppController {
       if ($name === 'app' || in_array($name, self::$private_controllers)) {
         continue;
       }
-      ApiInterfaceDispatcher::load($name);
+      ApiInterfaceDispatcher::loadController($name);
       $class = ApiInterfaceDispatcher::toCamelCase($name);
       array_push($controllers, array(
         'name' => $name,

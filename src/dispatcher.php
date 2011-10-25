@@ -28,11 +28,22 @@ class ApiInterfaceDispatcher {
       return $this->error(405, 'Method Not Allowed');
     }
 
-    if (empty($_POST['requests'])) {
+    if (
+      empty($_POST['requests']) ||
+      empty($_POST['key']) ||
+      empty($_POST['token']) ||
+      mb_strlen($_POST['key']) !== 32
+    ) {
       return $this->error(400, 'Bad Request');
     }
 
-    if (!self::load('app')) {
+    $this->session = self::startSession($_POST['key'], $_POST['token']);
+
+    if (!$this->session->isValid()) {
+      return $this->error(401, 'Unauthorised');
+    }
+
+    if (!self::loadController('app')) {
       include_once dirname(__FILE__) . '/app_controller.php';
     }
 
@@ -60,7 +71,7 @@ class ApiInterfaceDispatcher {
           throw new Exception('Bad Request', 400);
         }
 
-        if (!self::load($request['controller'])) {
+        if (!self::loadController($request['controller'])) {
           throw new Exception('Invalid controller', 404);
         }
 
@@ -126,7 +137,17 @@ class ApiInterfaceDispatcher {
       }
     }
 
-    $this->respond(200, array('status' => 200, 'results' => $responses));
+    $token = self::generateRandomToken();
+    $this->session->replaceToken($token);
+
+    $this->respond(
+      200,
+      array(
+        'status' => 200,
+        'token' => $token,
+        'results' => $responses
+      )
+    );
 
   }
 
@@ -134,7 +155,7 @@ class ApiInterfaceDispatcher {
     if (method_exists($this, 'onError')) {
       $this->onError($status, $message);
     }
-    if ($response) {
+    if ($respond) {
       $this->respond($status, array('status' => $status, 'error' => $message));
     }
   }
@@ -147,15 +168,23 @@ class ApiInterfaceDispatcher {
     return self::toCamelCase(strtolower($controller) . '_controller');
   }
 
-  public static function load ($controller) {
-    $controller = strtolower($controller) . '_controller';
+  public static function loadController ($controller) {
+    return self::load($controller . '_controller');
+  }
 
-    $class = self::toCamelCase($controller);
+  public static function loadHelper ($helper) {
+    return self::load($helper . '_helper');
+  }
+
+  public static function load ($name) {
+    $name = strtolower($name);
+
+    $class = self::toCamelCase($name);
     if (class_exists($class)) {
       return true;
     }
 
-    $file = self::$directory . $controller . '.php';
+    $file = self::$directory . $name . '.php';
  
     if (!is_file($file) || !is_readable($file)) {
       return false;
@@ -171,6 +200,59 @@ class ApiInterfaceDispatcher {
 
     echo json_encode($data);
     exit;
+  }
+
+  public static function requestKeyAndToken () {
+    $session = self::startSession(null, null);
+
+    do {
+      $key = self::generateRandomToken();
+    } while ($session->keyExists($key));
+
+    $token = self::generateRandomToken();
+
+    $session->newKey($key, $token);
+
+    return array('key' => $key, 'token' => $token);
+  }
+
+  public static function generateRandomToken () {
+    return md5(
+      microtime(true) .
+      mt_rand() .
+      $_SERVER['REMOTE_ADDR']
+    );
+  }
+
+  public static function startSession ($key, $token) {
+    $session_path = $_SERVER['SCRIPT_NAME'];
+    $session_path_length = mb_strlen($session_path);
+
+    if ($session_path_length === 0 || $session_path === '/') {
+      $session_path = '/';
+    } else if ($session_path[$session_path_length - 1] !== '/') {
+      $session_path = dirname($session_path) . '/';
+    } else {
+      $session_path = dirname($session_path . '/.') . '/';
+    }
+
+    if (!self::loadHelper('session')) {
+      include_once dirname(__FILE__) . '/session_helper.php';
+    }
+
+    return new SessionHelper(
+      $key,
+      $token,
+      0, // cookie lifetime
+      // FIXME - currently the path and domain of the index page
+      // need to be the same as the api page. should be
+      // configurable so the pages can be placed in different
+      // directories
+      $session_path, // cookie path
+      $_SERVER['HTTP_HOST'], // cookie domain
+      false, // https only
+      true // http only (no js)
+    );
   }
 
 }
