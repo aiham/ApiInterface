@@ -7,3 +7,4 @@ To do
 - Implement methods that require authorisation
 - Add documentation and tests
 - Fix how requests are batched together into a single request
+- Clear stale tokens from session
