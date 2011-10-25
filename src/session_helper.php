@@ -2,25 +2,31 @@
 
 class SessionHelper {
 
-  protected $_key, $_token;
+  protected $key, $token;
 
   public function __construct ($key, $token, $lifetime, $path, $domain, $secure, $httponly) {
 
-    $this->_key = $key;
-    $this->_token = $token;
+    $this->key = $key;
+    $this->token = $token;
 
     session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
     session_start();
 
+    if (!isset($_SESSION['values'])) {
+      $_SESSION['values'] = array();
+    }
+
   }
 
-  public function __get ($key) {
-    return isset($_SESSION[$this->_key]['values'][$key]) ?
-      $_SESSION[$this->_key]['values'][$key] : null;
+  public function get ($key, $subsession = false) {
+    $container = $subsession ?
+      $_SESSION[$this->key]['values'] : $_SESSION['values'];
+
+    return isset($container[$key]) ? $container[$key] : null;
   }
 
-  public function __set ($key, $value) {
-    $_SESSION[$this->_key]['values'][$key] = $value;
+  public function set ($key, $value, $subsession = false) {
+    $_SESSION[$this->key]['values'][$key] = $value;
   }
 
   public function keyExists ($key) {
@@ -28,9 +34,9 @@ class SessionHelper {
   }
 
   public function isValid () {
-    return isset($_SESSION[$this->_key]) &&
-      isset($_SESSION[$this->_key]['token']) &&
-      $_SESSION[$this->_key]['token'] === $this->_token;
+    return isset($_SESSION[$this->key]) &&
+      isset($_SESSION[$this->key]['token']) &&
+      $_SESSION[$this->key]['token'] === $this->token;
   }
 
   public function newKey ($key, $token) {
@@ -42,9 +48,9 @@ class SessionHelper {
   }
 
   public function replaceToken ($token) {
-    $this->_token = $token;
-    $_SESSION[$this->_key]['token'] = $this->_token;
-    $_SESSION[$this->_key]['last_request'] = time();
+    $this->token = $token;
+    $_SESSION[$this->key]['token'] = $this->token;
+    $_SESSION[$this->key]['last_request'] = time();
   }
 
 }
