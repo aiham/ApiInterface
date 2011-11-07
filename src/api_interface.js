@@ -269,7 +269,7 @@ var ApiInterface;
 
           response = this.request.responseObject;
 
-          if (!response || !response.status || response.status !== 200 || !isString(response.token)) {
+          if (!response || response.status !== 200 || !isString(response.token)) {
             if (isFunction(this.error)) {
               this.error.call(this);
             }
